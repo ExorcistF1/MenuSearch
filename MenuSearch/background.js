@@ -90,16 +90,27 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     const tabId    = tab ? tab.id : undefined;
 
     const tabIndex = tab ? tab.index : undefined;
+	let nextIndex = (tabIndex != null) ? tabIndex + 1 : undefined;
     urls.forEach((url, i) => {
       const finalUrl = replacePlaceholder(url, query);
       if (i === 0) {
-        openUrl(finalUrl, target, tabId, tabIndex);
-      } else {
-        chrome.tabs.create({
+         if (target === "same_tab") {
+			 chrome.tabs.update(tabId, { url: finalUrl });
+		} else {
+			chrome.tabs.create({
+				url: finalUrl,
+				active: true,
+				index: nextIndex
+			});
+			if (nextIndex !== undefined) nextIndex++;
+		}
+	} else {
+		chrome.tabs.create({
           url: finalUrl,
           active: false,
-          index: tabIndex != null ? tabIndex + 1 + i : undefined
+          index: nextIndex
         });
+		if (nextIndex !== undefined) nextIndex++;
       }
     });
   });
@@ -124,18 +135,29 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   const tabId    = sender.tab ? sender.tab.id : undefined;
 
   const tabIndex = sender.tab ? sender.tab.index : undefined;
+  let nextIndex = (tabIndex != null) ? tabIndex + 1 : undefined;
   urls.forEach((url, i) => {
-    const finalUrl = replacePlaceholder(url, query);
-    if (i === 0) {
-      openUrl(finalUrl, target, tabId, tabIndex);
-    } else {
-      chrome.tabs.create({
-        url: finalUrl,
-        active: false,
-        index: tabIndex != null ? tabIndex + 1 + i : undefined
-      });
-    }
-  });
+		const finalUrl = replacePlaceholder(url, query);
+		if (i === 0) {
+			if (target === "same_tab") {
+				chrome.tabs.update(tabId, { url: finalUrl });
+			} else {
+				chrome.tabs.create({
+					url: finalUrl,
+					active: true,
+					index: nextIndex
+				});
+				if (nextIndex !== undefined) nextIndex++;
+			}
+		} else {
+			chrome.tabs.create({
+				url: finalUrl,
+				active: false,
+				index: nextIndex
+			});
+			if (nextIndex !== undefined) nextIndex++;
+		}
+	});
 
   sendResponse({ ok: true });
   return true;
