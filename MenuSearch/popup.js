@@ -199,7 +199,7 @@ function applyTargetOptions() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shortcut code helpers (NEW)
+// Shortcut code helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function codeToShortcutPart(code) {
   if (code.startsWith('Key')) return code;
@@ -476,6 +476,7 @@ let currentUrlRowsContainer = null;
 async function openExistingEnginesModal(container) {
   currentUrlRowsContainer = container;
   const engines = await getEngines();
+  // Разрешаем выбирать и отключённые движки
   const validEngines = engines.filter(e => !e.separator);
   
   existingEnginesList.innerHTML = '';
