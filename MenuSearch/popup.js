@@ -43,7 +43,6 @@ function t(key, fallback) {
 }
 
 function applyI18n() {
-
   // Set document direction based on language (e.g. rtl for Arabic, Hebrew)
   document.documentElement.dir = ["ar", "he"].includes(currentSettings.lang) ? "rtl" : "ltr";
 
@@ -51,7 +50,7 @@ function applyI18n() {
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const key = el.dataset.i18n;
     const translation = t(key);
-   el.textContent = translation;
+    el.textContent = translation;
   });
   
   // HTML content translation
@@ -205,6 +204,61 @@ function applyTargetOptions() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Shortcut code helpers (NEW)
+// ─────────────────────────────────────────────────────────────────────────────
+function codeToShortcutPart(code) {
+  if (code.startsWith('Key')) return code;                // KeyA ... KeyZ
+  if (code.startsWith('Digit')) return code;              // Digit0 ... Digit9
+  // Other keys (Space, Enter, Escape, F1, etc.)
+  return code;
+}
+
+function shortcutPartToDisplay(part) {
+  if (part.startsWith('Key')) return part.slice(3);       // "KeyD" → "D"
+  if (part.startsWith('Digit')) return part.slice(5);     // "Digit1" → "1"
+  const map = {
+    'Space': '␣',
+    'Enter': '↵',
+    'Escape': 'Esc',
+    'ArrowUp': '↑',
+    'ArrowDown': '↓',
+    'ArrowLeft': '←',
+    'ArrowRight': '→'
+  };
+  return map[part] || part;
+}
+
+function parseShortcut(saved) {
+  if (!saved) return null;
+  const parts = saved.split('+');
+  const modifiers = [];
+  let codePart = '';
+  for (const p of parts) {
+    if (['Ctrl','Alt','Shift','Meta'].includes(p)) {
+      modifiers.push(p);
+    } else {
+      codePart = p;
+    }
+  }
+  return { modifiers, codePart };
+}
+
+function formatShortcutForDisplay(saved) {
+  const parsed = parseShortcut(saved);
+  if (!parsed) return '';
+  const displayKey = shortcutPartToDisplay(parsed.codePart);
+  return [...parsed.modifiers, displayKey].join('+');
+}
+
+// NEW: validation – shortcut must contain at least one modifier
+function isValidShortcut(saved) {
+  if (!saved) return true; // null is valid (no shortcut)
+  const parts = saved.split('+');
+  const hasModifier = parts.some(p => ['Ctrl','Alt','Shift','Meta'].includes(p));
+  return hasModifier;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Render engine list with SortableJS
 // ─────────────────────────────────────────────────────────────────────────────
 const engineList = document.getElementById("engineList");
@@ -267,7 +321,8 @@ async function loadEngines() {
       badges += `<span class="engine-badge badge-target">${targetIcon(engine.target)} ${targetLabel(engine.target)}</span>`;
     }
     if (engine.shortcut) {
-      badges += `<span class="engine-badge badge-shortcut"><i class="bi bi-keyboard"></i> ${escHtml(engine.shortcut)}</span>`;
+      const displayShortcut = formatShortcutForDisplay(engine.shortcut);
+      badges += `<span class="engine-badge badge-shortcut"><i class="bi bi-keyboard"></i> ${escHtml(displayShortcut)}</span>`;
     }
 
     const toggleTitle    = isDisabled ? t("enable", "Enable") : t("disable", "Disable");
@@ -376,29 +431,46 @@ function syncRemoveBtns(container) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shortcut capture helper
+// Shortcut capture helper (MODIFIED – always show English letter)
 // ─────────────────────────────────────────────────────────────────────────────
 function attachShortcutCapture(inputEl, clearBtn) {
-  inputEl.addEventListener("keydown", e => {
+  inputEl.addEventListener('keydown', e => {
     e.preventDefault();
     e.stopPropagation();
-    const parts = [];
-    if (e.ctrlKey)  parts.push("Ctrl");
-    if (e.altKey)   parts.push("Alt");
-    if (e.shiftKey) parts.push("Shift");
-    if (e.metaKey)  parts.push("Meta");
-    if (!["Control","Alt","Shift","Meta"].includes(e.key)) {
-      parts.push(e.key.length === 1 ? e.key.toUpperCase() : e.key);
+
+    const modifiers = [];
+    if (e.ctrlKey)  modifiers.push('Ctrl');
+    if (e.altKey)   modifiers.push('Alt');
+    if (e.shiftKey) modifiers.push('Shift');
+    if (e.metaKey)  modifiers.push('Meta');
+
+    // Ignore modifier-only presses
+    if (['Control','Alt','Shift','Meta'].includes(e.key)) return;
+
+    const codePart = codeToShortcutPart(e.code);
+    // Determine display key: use English letter from code, not current layout
+    let displayKey = '';
+    if (e.code.startsWith('Key')) {
+      displayKey = e.code.slice(3);        // "KeyD" -> "D"
+    } else if (e.code.startsWith('Digit')) {
+      displayKey = e.code.slice(5);        // "Digit1" -> "1"
+    } else {
+      // For other keys (Space, Enter, etc.), keep using e.key or map
+      displayKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
     }
-    const modCount = [e.ctrlKey, e.altKey, e.shiftKey, e.metaKey].filter(Boolean).length;
-    if (modCount > 0 && parts.length > modCount) {
-      inputEl.value = parts.join("+");
-      clearBtn.classList.add("visible");
-    }
+
+    const displayCombo = [...modifiers, displayKey].join('+');
+    const codeCombo = [...modifiers, codePart].join('+');
+
+    inputEl.value = displayCombo;
+    inputEl.dataset.shortcutValue = codeCombo;
+    clearBtn.classList.add('visible');
   });
-  clearBtn.addEventListener("click", () => {
-    inputEl.value = "";
-    clearBtn.classList.remove("visible");
+
+  clearBtn.addEventListener('click', () => {
+    inputEl.value = '';
+    delete inputEl.dataset.shortcutValue;
+    clearBtn.classList.remove('visible');
   });
 }
 
@@ -440,7 +512,14 @@ async function addEngine() {
   }
 
   const target   = targetSelect.value;
-  const shortcut = shortcutInput.value.trim() || null;
+  const shortcut = shortcutInput.dataset.shortcutValue || shortcutInput.value.trim() || null;
+
+  // Validate shortcut has at least one modifier
+  if (shortcut && !isValidShortcut(shortcut)) {
+    showToast(t("shortcut_no_modifier", "Shortcut must include at least one modifier (Ctrl, Alt, Shift, Meta)"), "error");
+    return;
+  }
+
   const isGroup  = urls.length > 1;
   const engines  = await getEngines();
 
@@ -463,6 +542,7 @@ async function addEngine() {
   syncRemoveBtns(urlRows);
   targetSelect.value     = "new_tab";
   shortcutInput.value    = "";
+  delete shortcutInput.dataset.shortcutValue;
   shortcutClear.classList.remove("visible");
 
   await loadEngines();
@@ -529,12 +609,9 @@ async function openEditModal(index) {
   syncRemoveBtns(editUrlRows);
 
   editTargetSelect.value     = engine.target   || "new_tab";
-  editShortcutInput.value    = engine.shortcut || "";
-  if (engine.shortcut) {
-    editShortcutClear.classList.add("visible");
-  } else {
-    editShortcutClear.classList.remove("visible");
-  }
+  editShortcutInput.value    = engine.shortcut ? formatShortcutForDisplay(engine.shortcut) : "";
+  editShortcutInput.dataset.shortcutValue = engine.shortcut || "";
+  editShortcutClear.classList.toggle("visible", !!engine.shortcut);
 
   editModal.classList.add("open");
   editNameInput.focus();
@@ -566,7 +643,14 @@ saveEditBtn.addEventListener("click", async () => {
   }
 
   const target   = editTargetSelect.value;
-  const shortcut = editShortcutInput.value.trim() || null;
+  const shortcut = editShortcutInput.dataset.shortcutValue || editShortcutInput.value.trim() || null;
+
+  // Validate shortcut has at least one modifier
+  if (shortcut && !isValidShortcut(shortcut)) {
+    showToast(t("shortcut_no_modifier", "Shortcut must include at least one modifier (Ctrl, Alt, Shift, Meta)"), "error");
+    return;
+  }
+
   const isGroup  = urls.length > 1;
   const engines  = await getEngines();
 
