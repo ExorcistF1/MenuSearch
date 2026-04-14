@@ -492,7 +492,7 @@ async function openExistingEnginesModal(container) {
         <img class="existing-engine-logo" src="${logo}" onerror="this.src='engines/default.webp'">
         <span class="existing-engine-name">${escHtml(engine.name)}</span>
         <span class="existing-engine-url">${escHtml(displayUrl)}</span>
-        ${urls.length > 1 ? `<span class="engine-badge badge-group">${urls.length} URLs</span>` : ''}
+        ${urls.length > 1 ? `<span class="engine-badge badge-group" style="flex-shrink:0;">${urls.length} URLs</span>` : ''}
       </label>
     `;
     existingEnginesList.appendChild(div);
