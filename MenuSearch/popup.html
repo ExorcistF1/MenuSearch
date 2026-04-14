@@ -614,6 +614,54 @@
   .edit-modal-header .modal-title { font-size: 14px; }
   .edit-modal-body { padding: 16px; }
 
+  /* ── Existing Engines Modal (new) ── */
+  #existingEnginesModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,11,18,.85);
+    z-index: 1001;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+  #existingEnginesModal.open { display: flex; }
+  .existing-engine-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .existing-engine-item label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+  }
+  .existing-engine-logo {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: contain;
+  }
+  .existing-engine-name {
+    font-weight: 600;
+  }
+  .existing-engine-url {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+  }
+
   /* ── Toast ── */
   .toast {
     position: fixed;
@@ -678,7 +726,10 @@
       <input class="input" type="text" data-i18n-placeholder="placeholder_search_url" placeholder="https://www.google.com/search?q=%s" data-url-input>
     </div>
   </div>
-  <button class="add-url-btn" id="addUrlRowBtn" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+  <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+    <button class="add-url-btn" id="addUrlRowBtn" style="flex:2;" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+    <button class="btn-outline" id="addFromExistingBtn" style="flex:1; padding: 6px 10px;">📋 From Existing</button>
+  </div>
 
   <div class="field-label" data-i18n="label_open_target">Open Target</div>
   <select class="field-select" id="targetSelect">
@@ -782,7 +833,10 @@
 
       <div class="field-label" data-i18n="label_search_url_with_placeholder_short">Search URL(s) — use %s</div>
       <div class="url-rows" id="editUrlRows"></div>
-      <button class="add-url-btn" id="editAddUrlRowBtn" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+      <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+        <button class="add-url-btn" id="editAddUrlRowBtn" style="flex:2;" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+        <button class="btn-outline" id="editAddFromExistingBtn" style="flex:1; padding: 6px 10px;">📋 From Existing</button>
+      </div>
 
       <div class="field-label" data-i18n="label_open_target">Open Target</div>
       <select class="field-select" id="editTargetSelect">
@@ -799,6 +853,25 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="saveEditBtn" data-i18n-html="btn_save_changes">Save Changes</button>
         <button class="btn btn-outline" id="cancelEditBtn" data-i18n="btn_cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Existing Engines Modal (for group building) ── -->
+<div id="existingEnginesModal">
+  <div class="edit-modal-box" style="max-width: 500px;">
+    <div class="edit-modal-header">
+      <span class="modal-title">Select Engines to Add URLs</span>
+      <button class="modal-close" id="closeExistingEnginesBtn">✕</button>
+    </div>
+    <div class="edit-modal-body" style="max-height: 400px; overflow-y: auto;">
+      <div id="existingEnginesList" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- dynamically populated -->
+      </div>
+      <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <button class="btn btn-primary" id="addSelectedUrlsBtn">Add Selected URLs</button>
+        <button class="btn btn-outline" id="cancelExistingEnginesBtn">Cancel</button>
       </div>
     </div>
   </div>
