@@ -333,7 +333,15 @@
 
   .engine-logo { width: 18px; height: 18px; border-radius: 3px; object-fit: contain; flex-shrink: 0; }
   .engine-info { flex: 1; min-width: 0; }
-  .engine-name { font-weight: 600; font-size: 13px; color: var(--text); }
+  .engine-name {
+    font-weight: 600;
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
   .engine-meta {
     font-size: 10px;
     color: var(--text-dim);
@@ -341,13 +349,19 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    max-width: 220px;
+    max-width: 100%;
     display: flex;
     gap: 6px;
     align-items: center;
     flex-wrap: wrap;
   }
-  .engine-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+  .engine-url {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+    min-width: 0;
+  }
   .engine-badge {
     font-size: 9px;
     font-weight: 600;
@@ -614,6 +628,66 @@
   .edit-modal-header .modal-title { font-size: 14px; }
   .edit-modal-body { padding: 16px; }
 
+  /* ── Existing Engines Modal (new) ── */
+  #existingEnginesModal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(10,11,18,.85);
+    z-index: 1001;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+    padding: 16px;
+  }
+  #existingEnginesModal.open { display: flex; }
+  .existing-engine-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    background: var(--surface2);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+  }
+  .existing-engine-item label {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    min-width: 0;
+  }
+  .existing-engine-logo {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  .existing-engine-name {
+    font-weight: 600;
+    flex-shrink: 0;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .existing-engine-url {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-family: 'DM Mono', monospace;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex: 1;
+    min-width: 0;
+  }
+  .existing-engine-item .engine-badge {
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+
   /* ── Toast ── */
   .toast {
     position: fixed;
@@ -661,7 +735,6 @@
 
 <!-- ── TAB: Add Engine ── -->
 <div class="tab-pane" id="tab-add">
-  <!-- Info Box explaining %s placeholder -->
   <div class="info-box" data-i18n-html="info_how_it_works">
     <i class="bi bi-info-circle-fill"></i>
     <strong>How it works:</strong> Use <strong>%s</strong> in your URL where the selected text should be inserted.<br>
@@ -678,7 +751,10 @@
       <input class="input" type="text" data-i18n-placeholder="placeholder_search_url" placeholder="https://www.google.com/search?q=%s" data-url-input>
     </div>
   </div>
-  <button class="add-url-btn" id="addUrlRowBtn" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+  <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+    <button class="add-url-btn" id="addUrlRowBtn" style="flex:2;" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+    <button class="add-url-btn" id="addFromExistingBtn" style="flex:1; text-align:center; justify-content:center;">📋 From Existing</button>
+  </div>
 
   <div class="field-label" data-i18n="label_open_target">Open Target</div>
   <select class="field-select" id="targetSelect">
@@ -771,7 +847,6 @@
       <button class="modal-close" id="closeEditBtn">✕</button>
     </div>
     <div class="edit-modal-body">
-      <!-- Info box inside edit modal -->
       <div class="info-box" style="margin-bottom: 12px;" data-i18n-html="info_how_it_works_short">
         <i class="bi bi-info-circle-fill"></i>
         Use <strong>%s</strong> where the selected text should go.
@@ -782,7 +857,10 @@
 
       <div class="field-label" data-i18n="label_search_url_with_placeholder_short">Search URL(s) — use %s</div>
       <div class="url-rows" id="editUrlRows"></div>
-      <button class="add-url-btn" id="editAddUrlRowBtn" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+      <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+        <button class="add-url-btn" id="editAddUrlRowBtn" style="flex:2;" data-i18n="btn_add_url_row">＋ Add another URL (group search)</button>
+        <button class="add-url-btn" id="editAddFromExistingBtn" style="flex:1; text-align:center; justify-content:center;">📋 From Existing</button>
+      </div>
 
       <div class="field-label" data-i18n="label_open_target">Open Target</div>
       <select class="field-select" id="editTargetSelect">
@@ -799,6 +877,25 @@
       <div class="btn-row">
         <button class="btn btn-primary" id="saveEditBtn" data-i18n-html="btn_save_changes">Save Changes</button>
         <button class="btn btn-outline" id="cancelEditBtn" data-i18n="btn_cancel">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Existing Engines Modal (for group building) ── -->
+<div id="existingEnginesModal">
+  <div class="edit-modal-box" style="max-width: 500px;">
+    <div class="edit-modal-header">
+      <span class="modal-title">Select Engines to Add URLs</span>
+      <button class="modal-close" id="closeExistingEnginesBtn">✕</button>
+    </div>
+    <div class="edit-modal-body" style="max-height: 400px; overflow-y: auto;">
+      <div id="existingEnginesList" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- dynamically populated -->
+      </div>
+      <div style="margin-top: 16px; display: flex; gap: 8px;">
+        <button class="btn btn-primary" id="addSelectedUrlsBtn">Add Selected URLs</button>
+        <button class="btn btn-outline" id="cancelExistingEnginesBtn">Cancel</button>
       </div>
     </div>
   </div>

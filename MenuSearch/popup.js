@@ -14,7 +14,6 @@ async function loadLang(lang) {
     }
   } catch (err) {
     console.warn(`Failed to load language ${lang}:`, err);
-    // Fallback to English
     if (lang !== "en") {
       try {
         const fallbackRes = await fetch(LANG_URL("en"));
@@ -43,17 +42,14 @@ function t(key, fallback) {
 }
 
 function applyI18n() {
-  // Set document direction based on language (e.g. rtl for Arabic, Hebrew)
   document.documentElement.dir = ["ar", "he"].includes(currentSettings.lang) ? "rtl" : "ltr";
 
-  // Text content translation
   document.querySelectorAll("[data-i18n]").forEach(el => {
     const key = el.dataset.i18n;
     const translation = t(key);
     el.textContent = translation;
   });
   
-  // HTML content translation
   document.querySelectorAll("[data-i18n-html]").forEach(el => {
     const key = el.dataset.i18nHtml;
     const translation = t(key);
@@ -62,7 +58,6 @@ function applyI18n() {
     }
   });
   
-  // Placeholder translation
   document.querySelectorAll("[data-i18n-placeholder]").forEach(el => {
     const key = el.dataset.i18nPlaceholder;
     const translation = t(key);
@@ -204,18 +199,17 @@ function applyTargetOptions() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shortcut code helpers (NEW)
+// Shortcut code helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function codeToShortcutPart(code) {
-  if (code.startsWith('Key')) return code;                // KeyA ... KeyZ
-  if (code.startsWith('Digit')) return code;              // Digit0 ... Digit9
-  // Other keys (Space, Enter, Escape, F1, etc.)
+  if (code.startsWith('Key')) return code;
+  if (code.startsWith('Digit')) return code;
   return code;
 }
 
 function shortcutPartToDisplay(part) {
-  if (part.startsWith('Key')) return part.slice(3);       // "KeyD" → "D"
-  if (part.startsWith('Digit')) return part.slice(5);     // "Digit1" → "1"
+  if (part.startsWith('Key')) return part.slice(3);
+  if (part.startsWith('Digit')) return part.slice(5);
   const map = {
     'Space': '␣',
     'Enter': '↵',
@@ -250,9 +244,8 @@ function formatShortcutForDisplay(saved) {
   return [...parsed.modifiers, displayKey].join('+');
 }
 
-// NEW: validation – shortcut must contain at least one modifier
 function isValidShortcut(saved) {
-  if (!saved) return true; // null is valid (no shortcut)
+  if (!saved) return true;
   const parts = saved.split('+');
   const hasModifier = parts.some(p => ['Ctrl','Alt','Shift','Meta'].includes(p));
   return hasModifier;
@@ -371,7 +364,6 @@ async function loadEngines() {
     engineList.appendChild(div);
   });
 
-  // Initialize SortableJS
   if (sortableInstance) sortableInstance.destroy();
   sortableInstance = new Sortable(engineList, {
     handle: ".drag-handle",
@@ -431,7 +423,7 @@ function syncRemoveBtns(container) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shortcut capture helper (MODIFIED – always show English letter)
+// Shortcut capture helper
 // ─────────────────────────────────────────────────────────────────────────────
 function attachShortcutCapture(inputEl, clearBtn) {
   inputEl.addEventListener('keydown', e => {
@@ -444,18 +436,15 @@ function attachShortcutCapture(inputEl, clearBtn) {
     if (e.shiftKey) modifiers.push('Shift');
     if (e.metaKey)  modifiers.push('Meta');
 
-    // Ignore modifier-only presses
     if (['Control','Alt','Shift','Meta'].includes(e.key)) return;
 
     const codePart = codeToShortcutPart(e.code);
-    // Determine display key: use English letter from code, not current layout
     let displayKey = '';
     if (e.code.startsWith('Key')) {
-      displayKey = e.code.slice(3);        // "KeyD" -> "D"
+      displayKey = e.code.slice(3);
     } else if (e.code.startsWith('Digit')) {
-      displayKey = e.code.slice(5);        // "Digit1" -> "1"
+      displayKey = e.code.slice(5);
     } else {
-      // For other keys (Space, Enter, etc.), keep using e.key or map
       displayKey = e.key.length === 1 ? e.key.toUpperCase() : e.key;
     }
 
@@ -473,6 +462,88 @@ function attachShortcutCapture(inputEl, clearBtn) {
     clearBtn.classList.remove('visible');
   });
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Existing Engines Modal (group building)
+// ─────────────────────────────────────────────────────────────────────────────
+const existingEnginesModal = document.getElementById('existingEnginesModal');
+const closeExistingEnginesBtn = document.getElementById('closeExistingEnginesBtn');
+const cancelExistingEnginesBtn = document.getElementById('cancelExistingEnginesBtn');
+const existingEnginesList = document.getElementById('existingEnginesList');
+const addSelectedUrlsBtn = document.getElementById('addSelectedUrlsBtn');
+let currentUrlRowsContainer = null;
+
+async function openExistingEnginesModal(container) {
+  currentUrlRowsContainer = container;
+  const engines = await getEngines();
+  // Разрешаем выбирать и отключённые движки
+  const validEngines = engines.filter(e => !e.separator);
+  
+  existingEnginesList.innerHTML = '';
+  validEngines.forEach(engine => {
+    const urls = (engine.urls && engine.urls.length) ? engine.urls : [engine.url];
+    const displayUrl = urls[0].includes('%s') ? urls[0] : urls[0] + '%s';
+    const logo = engine.logo || 'engines/default.webp';
+    
+    const div = document.createElement('div');
+    div.className = 'existing-engine-item';
+    div.innerHTML = `
+      <input type="checkbox" id="chk_${engine.name.replace(/\s/g,'')}" value="${engine.name}" data-urls='${JSON.stringify(urls)}'>
+      <label for="chk_${engine.name.replace(/\s/g,'')}">
+        <img class="existing-engine-logo" src="${logo}" onerror="this.src='engines/default.webp'">
+        <span class="existing-engine-name">${escHtml(engine.name)}</span>
+        <span class="existing-engine-url">${escHtml(displayUrl)}</span>
+        ${urls.length > 1 ? `<span class="engine-badge badge-group">${urls.length} URLs</span>` : ''}
+      </label>
+    `;
+    existingEnginesList.appendChild(div);
+  });
+  
+  existingEnginesModal.classList.add('open');
+}
+
+function closeExistingEnginesModal() {
+  existingEnginesModal.classList.remove('open');
+  currentUrlRowsContainer = null;
+}
+
+function addSelectedUrlsToContainer() {
+  if (!currentUrlRowsContainer) return;
+  
+  const checkboxes = existingEnginesList.querySelectorAll('input[type="checkbox"]:checked');
+  if (checkboxes.length === 0) {
+    showToast('Select at least one engine', 'error');
+    return;
+  }
+  
+  checkboxes.forEach(cb => {
+    const urls = JSON.parse(cb.dataset.urls);
+    urls.forEach(url => {
+      const row = makeUrlRow(url, currentUrlRowsContainer);
+      currentUrlRowsContainer.appendChild(row);
+    });
+  });
+  
+  syncRemoveBtns(currentUrlRowsContainer);
+  closeExistingEnginesModal();
+  showToast(`Added URLs from ${checkboxes.length} engine(s)`, 'success');
+}
+
+// Event listeners for existing engines modal
+document.getElementById('addFromExistingBtn').addEventListener('click', () => {
+  openExistingEnginesModal(urlRows);
+});
+
+document.getElementById('editAddFromExistingBtn').addEventListener('click', () => {
+  openExistingEnginesModal(editUrlRows);
+});
+
+closeExistingEnginesBtn.addEventListener('click', closeExistingEnginesModal);
+cancelExistingEnginesBtn.addEventListener('click', closeExistingEnginesModal);
+addSelectedUrlsBtn.addEventListener('click', addSelectedUrlsToContainer);
+existingEnginesModal.addEventListener('click', (e) => {
+  if (e.target === existingEnginesModal) closeExistingEnginesModal();
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Add Engine tab
@@ -504,7 +575,6 @@ async function addEngine() {
   if (!name) { showToast(t("toast_fill_fields","Please fill all fields"), "error"); return; }
   if (!urls.length) { showToast(t("toast_fill_fields","Please fill all fields"), "error"); return; }
 
-  // Validate URLs contain %s
   const missingPlaceholder = urls.find(u => !u.includes("%s"));
   if (missingPlaceholder) {
     showToast(t("toast_missing_placeholder", "Add %s to URL where search text goes"), "error");
@@ -514,7 +584,6 @@ async function addEngine() {
   const target   = targetSelect.value;
   const shortcut = shortcutInput.dataset.shortcutValue || shortcutInput.value.trim() || null;
 
-  // Validate shortcut has at least one modifier
   if (shortcut && !isValidShortcut(shortcut)) {
     showToast(t("shortcut_no_modifier", "Shortcut must include at least one modifier (Ctrl, Alt, Shift, Meta)"), "error");
     return;
@@ -645,7 +714,6 @@ saveEditBtn.addEventListener("click", async () => {
   const target   = editTargetSelect.value;
   const shortcut = editShortcutInput.dataset.shortcutValue || editShortcutInput.value.trim() || null;
 
-  // Validate shortcut has at least one modifier
   if (shortcut && !isValidShortcut(shortcut)) {
     showToast(t("shortcut_no_modifier", "Shortcut must include at least one modifier (Ctrl, Alt, Shift, Meta)"), "error");
     return;
