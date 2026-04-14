@@ -44,7 +44,7 @@ function refreshMenu() {
           chrome.contextMenus.create({
             id: "engine_" + index,
             parentId: PARENT_ID,
-            title: engine.name,
+            title: isGroup ? "📁 " + engine.name + " — " + engine.urls.length + " URLs": engine.name,
             contexts: ["selection"]
           });
         }
