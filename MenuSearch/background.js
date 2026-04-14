@@ -25,22 +25,37 @@ function replacePlaceholder(url, query) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Rebuild context menu — skips disabled engines
+// Rebuild context menu — hides parent if no enabled engines
 // ─────────────────────────────────────────────────────────────────────────────
 function refreshMenu() {
   chrome.contextMenus.removeAll(() => {
-    chrome.contextMenus.create({ id: PARENT_ID, title: "Search with", contexts: ["selection"] });
-
     chrome.storage.local.get(["engines"], data => {
+      const engines = data.engines || [];
+      // Filter out disabled and separator items
+      const enabledItems = engines.filter(e => !e.disabled && !e.separator);
+
+      // If no enabled engines, don't create anything
+      if (enabledItems.length === 0) return;
+
+      // Create parent menu only if we have items to show
+      chrome.contextMenus.create({
+        id: PARENT_ID,
+        title: "Search with",
+        contexts: ["selection"]
+      });
+
       let sepCount = 0;
-      (data.engines || []).forEach((engine, index) => {
-        // Skip disabled engines — they should not appear in the context menu
+      engines.forEach((engine, index) => {
         if (engine.disabled) return;
 
         if (engine.separator) {
-          chrome.contextMenus.create({ id: "sep_" + sepCount++, parentId: PARENT_ID, type: "separator", contexts: ["selection"] });
+          chrome.contextMenus.create({
+            id: "sep_" + sepCount++,
+            parentId: PARENT_ID,
+            type: "separator",
+            contexts: ["selection"]
+          });
         } else {
-          const isGroup = Array.isArray(engine.urls) && engine.urls.length > 1;
           chrome.contextMenus.create({
             id: "engine_" + index,
             parentId: PARENT_ID,
