@@ -12,13 +12,21 @@
     // Must have at least one modifier
     if (!e.ctrlKey && !e.altKey && !e.shiftKey && !e.metaKey) return;
 
-    // Build combo — exact same format as popup.js attachShortcutCapture
+    // Build combo based on physical key codes (independent of layout)
     const parts = [];
     if (e.ctrlKey)  parts.push("Ctrl");
     if (e.altKey)   parts.push("Alt");
     if (e.shiftKey) parts.push("Shift");
     if (e.metaKey)  parts.push("Meta");
-    parts.push(e.key.length === 1 ? e.key.toUpperCase() : e.key);
+    
+    const code = e.code;
+    let codePart = '';
+    if (code.startsWith('Key')) codePart = code;           // KeyA .. KeyZ
+    else if (code.startsWith('Digit')) codePart = code;    // Digit0 .. Digit9
+    else codePart = code; // Space, Enter, etc.
+    
+    if (!codePart) return;
+    parts.push(codePart);
     const combo = parts.join("+");
 
     // Read engines synchronously from a cached copy we keep updated
